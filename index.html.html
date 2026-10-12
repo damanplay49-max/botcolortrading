@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎲 WinGo 30S 9-Bot Custom Analyzer</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        button { cursor: pointer; transition: all 0.15s ease; }
+        button:active { transform: scale(0.92); }
+        .bg-half-0 { background: linear-gradient(135deg, #ef4444 50%, #a855f7 50%); }
+        .bg-half-5 { background: linear-gradient(135deg, #22c55e 50%, #a855f7 50%); }
+        #historyContainer, .scroll-x-container { scroll-behavior: smooth; }
+        .scroll-x-container::-webkit-scrollbar { height: 4px; }
+        .scroll-x-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .live-dot { display: inline-block; width: 7px; height: 7px; background: #22c55e; border-radius: 50%; animation: pulse 1.5s infinite; margin-right: 4px; }
+        .round-timer { font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+        .clock-badge { font-variant-numeric: tabular-nums; font-family: ui-monospace, monospace; }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 p-2 md:p-4 font-sans text-slate-800">
+
+    <div class="max-w-7xl mx-auto mt-1 md:mt-3">
+        <div class="bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-3 md:p-5">
+            
+            <!-- Header -->
+            <div class="text-center mb-3">
+                <h1 class="text-xl md:text-3xl font-extrabold mb-1 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
+                    🌍 WinGo 30S 9-Bot Custom Analyzer
+                </h1>
+                <p class="text-gray-500 text-xs font-semibold flex items-center justify-center gap-1">
+                    <span class="live-dot"></span> Live Voice Alert (BS Level 4+ | Color Level 8+)
+                </p>
+            </div>
+
+            <!-- LIVE PERIOD BANNER -->
+            <div class="bg-gradient-to-r from-indigo-900 to-slate-900 text-white rounded-2xl p-2.5 mb-3 flex flex-col sm:flex-row justify-between items-center shadow-md border border-indigo-700/50">
+                <div class="flex items-center gap-2 mb-1 sm:mb-0">
+                    <span class="text-xs uppercase tracking-wider text-indigo-300 font-bold">Current Period:</span>
+                    <span id="currentPeriodDisplay" class="font-mono text-cyan-300 font-extrabold text-sm sm:text-base">Loading...</span>
+                </div>
+                <div class="text-xs text-indigo-200">
+                    Next Period in: <span id="periodCountdown" class="font-bold text-yellow-300">30s</span>
+                </div>
+            </div>
+
+            <!-- CONSENSUS PANEL -->
+            <div class="bg-gradient-to-r from-emerald-900 to-indigo-900 text-white rounded-2xl p-3 md:p-4 mb-4 shadow-xl border border-emerald-700/40">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-3">
+                    <h3 class="text-sm font-bold text-yellow-300 flex items-center gap-1.5">
+                        🔥 Multi-Bot Consensus (9 Bots)
+                    </h3>
+                    <div class="flex gap-2 text-[10px]">
+                        <span class="bg-slate-800 px-2 py-1 rounded-lg">Strong Signal = 6+ bots + Level ≤1</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                    <div class="bg-black/30 rounded-xl p-3 text-center border border-white/10">
+                        <p class="text-[10px] text-gray-300 uppercase font-bold">Big Votes</p>
+                        <p id="consBigCount" class="text-2xl font-extrabold text-emerald-400">0</p>
+                    </div>
+                    <div class="bg-black/30 rounded-xl p-3 text-center border border-white/10">
+                        <p class="text-[10px] text-gray-300 uppercase font-bold">Small Votes</p>
+                        <p id="consSmallCount" class="text-2xl font-extrabold text-rose-400">0</p>
+                    </div>
+                    <div class="bg-black/30 rounded-xl p-3 text-center border border-white/10">
+                        <p class="text-[10px] text-gray-300 uppercase font-bold">Green Votes</p>
+                        <p id="consGreenCount" class="text-2xl font-extrabold text-green-400">0</p>
+                    </div>
+                    <div class="bg-black/30 rounded-xl p-3 text-center border border-white/10">
+                        <p class="text-[10px] text-gray-300 uppercase font-bold">Red Votes</p>
+                        <p id="consRedCount" class="text-2xl font-extrabold text-red-400">0</p>
+                    </div>
+                </div>
+
+                <div class="bg-black/40 rounded-xl p-3 border border-yellow-500/30">
+                    <div class="flex flex-col sm:flex-row justify-between items-center gap-2">
+                        <div>
+                            <p class="text-[11px] text-gray-300">Final Consensus Signal</p>
+                            <p id="finalConsensusSignal" class="text-lg font-extrabold text-yellow-300">Waiting for data...</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[11px] text-gray-300">Confidence</p>
+                            <p id="confidenceLevel" class="text-sm font-bold text-cyan-300">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RISK MANAGEMENT -->
+            <div class="bg-slate-900 rounded-2xl p-3 md:p-4 mb-4 text-white shadow-xl border border-indigo-900/50">
+                <h3 class="text-xs md:text-sm font-bold text-yellow-400 mb-3 flex items-center gap-1.5">
+                    💰 Risk Management Calculator (15-Level Safe)
+                </h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                    <div>
+                        <label class="text-[10px] text-gray-400">Total Bankroll (₹)</label>
+                        <input id="bankrollInput" type="number" value="10000" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-cyan-300 focus:outline-none focus:border-yellow-400">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-gray-400">Risk per Trade (%)</label>
+                        <input id="riskPercentInput" type="number" value="1.0" step="0.1" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-cyan-300 focus:outline-none focus:border-yellow-400">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-gray-400">Daily Loss Limit (%)</label>
+                        <input id="dailyLossInput" type="number" value="15" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-cyan-300 focus:outline-none focus:border-yellow-400">
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="calculateRisk()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 rounded-lg text-xs">
+                            Calculate
+                        </button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="bg-slate-800 rounded-xl p-2 border border-slate-700">
+                        <p class="text-[10px] text-gray-400">Base Unit Size</p>
+                        <p id="unitSizeDisplay" class="text-sm font-bold text-emerald-400">₹100</p>
+                    </div>
+                    <div class="bg-slate-800 rounded-xl p-2 border border-slate-700">
+                        <p class="text-[10px] text-gray-400">Max Daily Loss</p>
+                        <p id="maxDailyLossDisplay" class="text-sm font-bold text-rose-400">₹1500</p>
+                    </div>
+                    <div class="bg-slate-800 rounded-xl p-2 border border-slate-700">
+                        <p class="text-[10px] text-gray-400">Max Level Support</p>
+                        <p id="maxTradesDisplay" class="text-sm font-bold text-yellow-300">15 Levels</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BULK BACKTEST BENCH -->
+            <div class="bg-slate-900 rounded-2xl p-3 md:p-4 mb-4 text-white shadow-xl border border-indigo-900/50">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-xs md:text-sm font-bold text-yellow-400 flex items-center gap-1.5">
+                        ⚡ Bulk History Backtest Bench
+                    </h3>
+                    <div class="flex gap-2">
+                        <button onclick="runBulkBacktest()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1 rounded-lg text-xs shadow-md">
+                            🚀 Run Test
+                        </button>
+                    </div>
+                </div>
+                <p class="text-[10px] text-slate-400 mb-2">Puraani history paste karein (spaces, commas ya newlines).</p>
+                <textarea id="backtestInput" rows="2" placeholder="Example: 8 3 3 7 9 1 6 9 0 5 9 7 9 2 2 1 5 5 9 7..." class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-xs text-cyan-300 font-mono focus:outline-none focus:border-yellow-400"></textarea>
+                
+                <div id="backtestResultsArea" class="hidden mt-3 pt-3 border-t border-slate-800">
+                    <div class="flex justify-between items-center mb-2">
+                        <span id="backtestSummaryText" class="text-xs font-bold text-slate-300"></span>
+                    </div>
+                    <div id="backtestGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-2 text-[10px]"></div>
+                </div>
+            </div>
+
+            <!-- EMPTY STATE -->
+            <div id="emptyState" class="text-center py-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col justify-center items-center mb-3">
+                <h3 class="text-xs font-bold text-slate-700">⏳ Data loading...</h3>
+                <p class="text-gray-500 text-[11px] mt-1 px-4">API & Bot models syncing...</p>
+            </div>
+
+            <!-- 9 BOTS DASHBOARD GRID -->
+            <div id="botsDashboard" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4"></div>
+
+            <!-- HISTORY -->
+            <div id="historyBox" class="bg-slate-100 rounded-xl p-2.5 border border-slate-200 mb-3">
+                <div class="flex justify-between items-center mb-1.5 text-xs font-bold text-slate-700">
+                    <span id="historyCount" class="text-[11px]">📊 Recorded History (0)</span>
+                    <div class="flex gap-1.5">
+                        <button onclick="undoLastResult()" class="px-2 py-0.5 bg-amber-600 text-white rounded text-[10px]">Undo</button>
+                        <button onclick="clearResults()" class="px-2 py-0.5 bg-rose-600 text-white rounded text-[10px]">Clear</button>
+                        <button onclick="copyResults()" class="px-2 py-0.5 bg-blue-600 text-white rounded text-[10px]">Copy</button>
+                    </div>
+                </div>
+                <div id="historyContainer" class="overflow-x-auto pb-1 flex gap-1.5 min-h-[28px]"></div>
+            </div>
+
+            <!-- COMPACT CLOCK & CONTROLS -->
+            <div class="bg-slate-900 rounded-2xl p-3 mb-3 shadow-inner">
+                <div class="grid grid-cols-3 gap-2 items-center text-center">
+                    <div class="bg-slate-800/80 p-2 rounded-xl border border-slate-700">
+                        <p class="text-indigo-300 text-[9px] uppercase font-bold">🕐 Time</p>
+                        <div id="currentClock" class="clock-badge text-lg md:text-xl font-bold text-cyan-300">--:--:--</div>
+                    </div>
+                    <div class="bg-slate-800/80 p-2 rounded-xl border border-slate-700">
+                        <p class="text-indigo-300 text-[9px] uppercase font-bold">⏱️ Next Result</p>
+                        <div id="roundTimerDisplay" class="round-timer text-2xl md:text-3xl font-bold text-white">30</div>
+                        <p id="roundStatus" class="text-slate-400 text-[9px]">Waiting...</p>
+                    </div>
+                    <div class="flex flex-col justify-center items-center gap-1.5">
+                        <div class="flex gap-1">
+                            <button onclick="fetchLatestResults(true)" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-medium">🔄 Sync</button>
+                            <button onclick="toggleAutoSync()" id="autoSyncBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-medium">⏸️ Pause</button>
+                        </div>
+                        <p class="text-[9px] text-slate-400" id="syncStatus">Auto-sync active</p>
+                    </div>
+                </div>
+
+                <div class="mt-2 pt-2 border-t border-slate-700 flex gap-2">
+                    <input id="bulkInput" type="text" placeholder="Manual override: 1 2 3 4..." 
+                           class="flex-1 bg-slate-800 text-white border border-slate-600 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-indigo-500">
+                    <button onclick="addBulkResults()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-xl font-medium text-xs">Add</button>
+                </div>
+            </div>
+
+            <div class="flex justify-center gap-3">
+                <button onclick="generateDeepAnalysisReport()" 
+                        class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-5 py-2 rounded-xl font-semibold shadow-md hover:shadow-lg text-xs">
+                    📊 Export 9 Bots Report
+                </button>
+                <button onclick="calculateRisk()" 
+                        class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-5 py-2 rounded-xl font-semibold shadow-md hover:shadow-lg text-xs">
+                    💰 Recalculate Risk
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOMIZE BOT MODAL -->
+    <div id="customizeModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full flex flex-col shadow-2xl text-white overflow-hidden p-4">
+            <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
+                <h3 id="customizeModalTitle" class="font-bold text-sm text-yellow-400">✏️ Customize Bot Strategy</h3>
+                <button onclick="closeCustomizeModal()" class="text-gray-400 hover:text-white font-bold text-lg">&times;</button>
+            </div>
+            <input type="hidden" id="editingBotId" value="">
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="text-gray-400 block mb-1">Bot Name</label>
+                    <input id="editBotNameInput" type="text" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-cyan-300 font-bold focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="text-gray-400 block mb-1">Select Predefined Pattern / Preset</label>
+                    <select id="predefinedPatternSelect" onchange="applyPredefinedPattern(this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-cyan-300 focus:outline-none">
+                        <option value="">-- Choose Predefined Pattern --</option>
+                        <option value="2Big_2Small">2 Big, 2 Small (Big, Big, Small, Small)</option>
+                        <option value="1Big_1Small">1 Big, 1 Small (Big, Small - Ping Pong)</option>
+                        <option value="3Big_1Small">3 Big, 1 Small (Big, Big, Big, Small)</option>
+                        <option value="1Big_3Small">1 Big, 3 Small (Big, Small, Small, Small)</option>
+                        <option value="invert_last">Invert Last (Ulta Result)</option>
+                        <option value="same_last">Same as Last (Same Result)</option>
+                        <option value="alternate">Strict Alternating (B, S, B, S...)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-gray-400 block mb-1">Strategy Type / Engine</label>
+                    <select id="editBotLogicType" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-cyan-300 focus:outline-none">
+                        <option value="custom_sequence">Custom Repeating Sequence</option>
+                        <option value="invert_last">Invert Last Result (Ulta)</option>
+                        <option value="same_last">Same as Last Result (Same)</option>
+                        <option value="alternate">Strict Alternating</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-gray-400 block mb-1">Manual Sequence Feed</label>
+                    <input id="editBotSequenceInput" type="text" placeholder="Big, Big, Small, Small" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-cyan-300 font-mono focus:outline-none">
+                    <p class="text-[10px] text-slate-400 mt-1">Comma ya space se separate karein (e.g. Big, Big, Small, Small)</p>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                    <button onclick="closeCustomizeModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg">Cancel</button>
+                    <button onclick="saveBotCustomization()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg">Save Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json";
+
+        let results = [];
+        let botsData = {};
+
+        // Default Presets for 9 Bots
+        const defaultPatterns = [
+            ['Big', 'Big', 'Small', 'Small'],
+            ['Big', 'Small'],
+            ['Big', 'Big', 'Big', 'Small'],
+            ['Big', 'Small', 'Small', 'Small'],
+            ['Big', 'Small'],
+            ['Big', 'Small'],
+            ['Big', 'Small'],
+            ['Big', 'Big', 'Small', 'Small', 'Big', 'Big', 'Small', 'Small'],
+            ['Small', 'Small', 'Big', 'Small', 'Small', 'Big']
+        ];
+
+        // Initialize Exactly 9 Bots with Default Settings
+        for(let i = 1; i <= 9; i++) {
+            botsData[i] = {
+                id: i,
+                name: `Bot ${i}`,
+                logicType: 'custom_sequence',
+                customSequence: defaultPatterns[i-1] || ['Big', 'Small'],
+                bsStreak: [0, 0],       // [Current Streak, Max Streak]
+                colorStreak: [0, 0],    // [Current Streak, Max Streak]
+                levelStats: {
+                    bs:    { fail: new Array(16).fill(0), win: new Array(16).fill(0) },
+                    color: { fail: new Array(16).fill(0), win: new Array(16).fill(0) }
+                },
+                lastPredBS: null,
+                lastPredColor: null,
+                liveWins: 0,
+                liveTotal: 0
+            };
+        }
+
+        let autoSyncEnabled = true;
+        let lastSyncSecond = -1;
+        let clockInterval = null;
+        let isFetching = false;
+        let lastProcessedIssue = null;
+        let isFirstFetch = true;
+        let latestActivePeriod = "---";
+
+        // Speech Alert Function in Hindi (Without "Dhyan de!")
+        function speakHindiAlert(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Stop ongoing speech
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'hi-IN';
+                utterance.rate = 0.9;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function getNumberColor(num) {
+            if (num === 0) return 'Red';
+            if (num === 5) return 'Green';
+            return (num === 1 || num === 3 || num === 7 || num === 9) ? 'Green' : 'Red';
+        }
+
+        function getLevelIndex(streak) {
+            return Math.min(Math.max(streak, 1), 15);
+        }
+
+        // --- PREDICTIVE ENGINE FOR 9 CUSTOM BOTS ---
+        function calculateBotPrediction(botId, historyArr) {
+            const bot = botsData[botId];
+            const len = historyArr.length;
+            const lastNum = historyArr[len - 1];
+            let predBS = 'Small';
+
+            switch(bot.logicType) {
+                case 'custom_sequence': {
+                    const seq = bot.customSequence;
+                    if (seq && seq.length > 0) {
+                        const target = seq[(len - 1) % seq.length];
+                        predBS = (target.toLowerCase().startsWith('b')) ? 'Big' : 'Small';
+                    } else {
+                        predBS = lastNum >= 5 ? 'Big' : 'Small';
+                    }
+                    break;
+                }
+                case 'invert_last': {
+                    if (len >= 1) {
+                        const lastBS = lastNum >= 5 ? 'Big' : 'Small';
+                        predBS = lastBS === 'Big' ? 'Small' : 'Big';
+                    } else {
+                        predBS = 'Big';
+                    }
+                    break;
+                }
+                case 'same_last': {
+                    if (len >= 1) {
+                        predBS = lastNum >= 5 ? 'Big' : 'Small';
+                    } else {
+                        predBS = 'Big';
+                    }
+                    break;
+                }
+                case 'alternate': {
+                    predBS = (len % 2 === 0) ? 'Big' : 'Small';
+                    break;
+                }
+                default: {
+                    predBS = lastNum >= 5 ? 'Big' : 'Small';
+                }
+            }
+
+            const predColor = predBS === 'Big' ? 'Green' : 'Red';
+            return { predBS, predColor };
+        }
+
+        function processNewNumberForAllBots(num) {
+            for(let id = 1; id <= 9; id++) {
+                let bot = botsData[id];
+                
+                // Process Big / Small
+                if (bot.lastPredBS !== null) {
+                    const actualBS = num >= 5 ? 'Big' : 'Small';
+                    bot.liveTotal++;
+                    if (bot.lastPredBS === actualBS) {
+                        bot.liveWins++;
+                        if (bot.bsStreak[0] >= 1) {
+                            bot.levelStats.bs.win[getLevelIndex(bot.bsStreak[0])]++;
+                        }
+                        bot.bsStreak[0] = 0; 
+                    } else {
+                        bot.bsStreak[0]++;
+                        if (bot.bsStreak[0] > 15) bot.bsStreak[0] = 15;
+                        if (bot.bsStreak[0] > bot.bsStreak[1]) bot.bsStreak[1] = bot.bsStreak[0];
+                        bot.levelStats.bs.fail[getLevelIndex(bot.bsStreak[0])]++;
+
+                        // Hindi Voice Alert if Big/Small Level >= 4
+                        if (bot.bsStreak[0] >= 4) {
+                            speakHindiAlert(`${bot.name} ka Big Small level ${bot.bsStreak[0]} fail ho gaya hai.`);
+                        }
+                    }
+                }
+
+                // Process Color
+                if (bot.lastPredColor !== null) {
+                    const actualColor = getNumberColor(num);
+                    if (bot.lastPredColor === actualColor) {
+                        if (bot.colorStreak[0] >= 1) {
+                            bot.levelStats.color.win[getLevelIndex(bot.colorStreak[0])]++;
+                        }
+                        bot.colorStreak[0] = 0;
+                    } else {
+                        bot.colorStreak[0]++;
+                        if (bot.colorStreak[0] > 15) bot.colorStreak[0] = 15;
+                        if (bot.colorStreak[0] > bot.colorStreak[1]) bot.colorStreak[1] = bot.colorStreak[0];
+                        bot.levelStats.color.fail[getLevelIndex(bot.colorStreak[0])]++;
+
+                        // Hindi Voice Alert ONLY if Color Level >= 8
+                        if (bot.colorStreak[0] >= 8) {
+                            speakHindiAlert(`${bot.name} ka color level ${bot.colorStreak[0]} fail ho gaya hai.`);
+                        }
+                    }
+                }
+            }
+        }
+
+        function generatePredictionsForNext() {
+            if (results.length < 1) return;
+            for(let id = 1; id <= 9; id++) {
+                let p = calculateBotPrediction(id, results);
+                botsData[id].lastPredBS = p.predBS;
+                botsData[id].lastPredColor = p.predColor;
+            }
+            renderAllBotsDashboard();
+            updateConsensusPanel();
+        }
+
+        // ========== CONSENSUS PANEL (9 BOTS) ==========
+        function updateConsensusPanel() {
+            let big = 0, small = 0, green = 0, red = 0;
+            let strongBig = 0, strongSmall = 0;
+
+            for (let id = 1; id <= 9; id++) {
+                const bot = botsData[id];
+                if (!bot.lastPredBS) continue;
+
+                if (bot.lastPredBS === 'Big') {
+                    big++;
+                    if (bot.bsStreak[0] <= 1) strongBig++;
+                } else {
+                    small++;
+                    if (bot.bsStreak[0] <= 1) strongSmall++;
+                }
+
+                if (bot.lastPredColor === 'Green') green++;
+                else red++;
+            }
+
+            document.getElementById('consBigCount').innerText = big;
+            document.getElementById('consSmallCount').innerText = small;
+            document.getElementById('consGreenCount').innerText = green;
+            document.getElementById('consRedCount').innerText = red;
+
+            let signal = "No Clear Signal";
+            let confidence = "Low";
+            let confColor = "text-gray-400";
+
+            if (big >= 6 && strongBig >= 4) {
+                signal = "🔥 STRONG BIG";
+                confidence = "Very High (6+ bots + Level Filter)";
+                confColor = "text-emerald-400";
+            } else if (small >= 6 && strongSmall >= 4) {
+                signal = "🔥 STRONG SMALL";
+                confidence = "Very High (6+ bots + Level Filter)";
+                confColor = "text-rose-400";
+            } else if (big >= 5) {
+                signal = "Big (Majority)";
+                confidence = "Medium-High";
+                confColor = "text-emerald-300";
+            } else if (small >= 5) {
+                signal = "Small (Majority)";
+                confidence = "Medium-High";
+                confColor = "text-rose-300";
+            }
+
+            document.getElementById('finalConsensusSignal').innerText = signal;
+            document.getElementById('confidenceLevel').innerText = confidence;
+            document.getElementById('confidenceLevel').className = `text-sm font-bold ${confColor}`;
+        }
+
+        // ========== RISK MANAGEMENT ==========
+        function calculateRisk() {
+            const bankroll = parseFloat(document.getElementById('bankrollInput').value) || 10000;
+            const riskPct = parseFloat(document.getElementById('riskPercentInput').value) || 1.0;
+            const dailyLossPct = parseFloat(document.getElementById('dailyLossInput').value) || 15;
+
+            const unitSize = Math.round(bankroll * (riskPct / 100));
+            const maxDailyLoss = Math.round(bankroll * (dailyLossPct / 100));
+
+            document.getElementById('unitSizeDisplay').innerText = `₹${unitSize}`;
+            document.getElementById('maxDailyLossDisplay').innerText = `₹${maxDailyLoss}`;
+            document.getElementById('maxTradesDisplay').innerText = `15 Levels`;
+        }
+
+        function formatHorizontalLevelStats(stats) {
+            let html = '';
+            for (let i = 1; i <= 15; i++) {
+                const f = stats.fail[i] || 0;
+                const w = stats.win[i] || 0;
+                html += `
+                    <div class="flex flex-col items-center justify-center bg-slate-50 border border-slate-200 rounded p-1 min-w-[42px] shrink-0 text-center shadow-xs">
+                        <span class="text-[9px] font-bold text-indigo-700">L${i}</span>
+                        <span class="text-[9px] text-rose-600 font-semibold">F:${f}</span>
+                        <span class="text-[9px] text-emerald-600 font-semibold">W:${w}</span>
+                    </div>
+                `;
+            }
+            return html;
+        }
+
+        function renderAllBotsDashboard() {
+            const container = document.getElementById('botsDashboard');
+            container.innerHTML = '';
+            
+            for(let id = 1; id <= 9; id++) {
+                let bot = botsData[id];
+                
+                const bsCurrentLvl = bot.bsStreak[0];
+                const bsMaxStreak = bot.bsStreak[1];
+                const colorCurrentLvl = bot.colorStreak[0];
+                const colorMaxStreak = bot.colorStreak[1];
+
+                const winRate = bot.liveTotal > 0 ? ((bot.liveWins / bot.liveTotal) * 100).toFixed(1) : "-";
+                const isStrong = bsCurrentLvl <= 1 && bot.lastPredBS;
+
+                const card = document.createElement('div');
+                card.className = `bg-gradient-to-br from-slate-50 via-white to-orange-50/40 border-2 ${isStrong ? 'border-emerald-400 shadow-md' : 'border-slate-200'} rounded-2xl p-3 shadow-sm flex flex-col justify-between`;
+                
+                let seqDesc = bot.logicType === 'custom_sequence' ? (bot.customSequence ? bot.customSequence.join(', ') : 'Custom') : bot.logicType;
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-center mb-2 pb-1.5 border-b border-slate-200">
+                            <span class="text-xs font-extrabold text-indigo-900 truncate max-w-[140px]">${bot.name}</span>
+                            <button onclick="openCustomizeModal(${id})" class="text-[9px] bg-indigo-600 text-white px-2 py-0.5 rounded font-bold hover:bg-indigo-700">⚙️ Edit</button>
+                        </div>
+
+                        <div class="text-[9px] text-gray-500 mb-2 truncate">Rule: <b class="text-purple-700">${seqDesc}</b></div>
+
+                        <div class="grid grid-cols-2 gap-2 mb-2.5">
+                            <div class="bg-white p-2 rounded-xl border border-slate-200 text-center shadow-xs">
+                                <p class="text-[9px] text-gray-400 font-bold uppercase">Big/Small</p>
+                                <p class="text-base font-extrabold text-indigo-700 mt-0.5">${bot.lastPredBS || '-'}</p>
+                            </div>
+                            <div class="bg-white p-2 rounded-xl border border-slate-200 text-center shadow-xs">
+                                <p class="text-[9px] text-gray-400 font-bold uppercase">Color</p>
+                                <p class="text-base font-extrabold mt-0.5 ${bot.lastPredColor === 'Red' ? 'text-red-600' : 'text-green-600'}">${bot.lastPredColor || '-'}</p>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center text-[10px] mb-2 px-1">
+                            <span class="text-slate-500">Live WR: <b class="text-indigo-700">${winRate}%</b></span>
+                            <span class="text-slate-500">Trades: ${bot.liveTotal}</span>
+                        </div>
+
+                        <div class="space-y-1.5 text-xs mb-2.5">
+                            <!-- BS Fail Level -->
+                            <div class="bg-white p-1.5 rounded-xl border border-slate-200 flex justify-between items-center">
+                                <span class="font-bold text-slate-700 text-[10px]">🟢 BS Fail Level:</span>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[9px] text-rose-600 font-semibold">Max: ${bsMaxStreak}</span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${bsCurrentLvl >= 4 ? 'bg-rose-600 text-white animate-pulse' : (bsCurrentLvl > 0 ? 'bg-amber-500 text-white' : 'bg-emerald-100 text-emerald-800')}">
+                                        Lvl ${bsCurrentLvl}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Color Fail Level -->
+                            <div class="bg-white p-1.5 rounded-xl border border-slate-200 flex justify-between items-center">
+                                <span class="font-bold text-slate-700 text-[10px]">🎨 Color Fail Level:</span>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[9px] text-rose-600 font-semibold">Max: ${colorMaxStreak}</span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${colorCurrentLvl >= 8 ? 'bg-rose-600 text-white animate-pulse' : (colorCurrentLvl > 0 ? 'bg-amber-500 text-white' : 'bg-emerald-100 text-emerald-800')}">
+                                        Lvl ${colorCurrentLvl}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1 text-[10px]">
+                            <p class="font-bold text-slate-600 text-[9px]">Level History (1 to 15):</p>
+                            <div class="scroll-x-container flex gap-1 overflow-x-auto pb-1 min-h-[38px] items-center">
+                                ${formatHorizontalLevelStats(bot.levelStats.bs)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        // --- CUSTOMIZE MODAL ---
+        function openCustomizeModal(botId) {
+            const bot = botsData[botId];
+            document.getElementById('editingBotId').value = botId;
+            document.getElementById('editBotNameInput').value = bot.name;
+            document.getElementById('editBotLogicType').value = bot.logicType;
+            document.getElementById('editBotSequenceInput').value = bot.customSequence ? bot.customSequence.join(', ') : '';
+            document.getElementById('predefinedPatternSelect').value = "";
+            document.getElementById('customizeModal').classList.remove('hidden');
+        }
+
+        function closeCustomizeModal() {
+            document.getElementById('customizeModal').classList.add('hidden');
+        }
+
+        function applyPredefinedPattern(val) {
+            if (!val) return;
+            const seqInput = document.getElementById('editBotSequenceInput');
+            const logicTypeSelect = document.getElementById('editBotLogicType');
+
+            if (val === "2Big_2Small") {
+                seqInput.value = "Big, Big, Small, Small";
+                logicTypeSelect.value = "custom_sequence";
+            } else if (val === "1Big_1Small") {
+                seqInput.value = "Big, Small";
+                logicTypeSelect.value = "custom_sequence";
+            } else if (val === "3Big_1Small") {
+                seqInput.value = "Big, Big, Big, Small";
+                logicTypeSelect.value = "custom_sequence";
+            } else if (val === "1Big_3Small") {
+                seqInput.value = "Big, Small, Small, Small";
+                logicTypeSelect.value = "custom_sequence";
+            } else if (val === "invert_last") {
+                logicTypeSelect.value = "invert_last";
+                seqInput.value = "";
+            } else if (val === "same_last") {
+                logicTypeSelect.value = "same_last";
+                seqInput.value = "";
+            } else if (val === "alternate") {
+                logicTypeSelect.value = "alternate";
+                seqInput.value = "";
+            }
+        }
+
+        function saveBotCustomization() {
+            const botId = parseInt(document.getElementById('editingBotId').value, 10);
+            const name = document.getElementById('editBotNameInput').value;
+            const logicType = document.getElementById('editBotLogicType').value;
+            const seqText = document.getElementById('editBotSequenceInput').value;
+
+            if (botsData[botId]) {
+                botsData[botId].name = name;
+                botsData[botId].logicType = logicType;
+                if (seqText.trim() !== '') {
+                    botsData[botId].customSequence = seqText.split(/[\s,]+/).filter(Boolean);
+                }
+            }
+            closeCustomizeModal();
+            generatePredictionsForNext();
+        }
+
+        // --- BULK BACKTEST ---
+        function runBulkBacktest() {
+            const text = document.getElementById('backtestInput').value.trim();
+            if (!text) {
+                alert('Pehle history paste karein!');
+                return;
+            }
+
+            const rawArr = text.match(/\d+/g);
+            if (!rawArr || rawArr.length === 0) {
+                alert('No valid numbers found!');
+                return;
+            }
+
+            const numbers = rawArr.map(n => parseInt(n, 10)).filter(n => !isNaN(n) && n >= 0 && n <= 9);
+            if (numbers.length < 5) {
+                alert('Kam se kam 5 numbers hone chahiye!');
+                return;
+            }
+
+            const backtestStats = {};
+            for (let i = 1; i <= 9; i++) {
+                backtestStats[i] = {
+                    botName: botsData[i].name,
+                    total: 0,
+                    winsBS: 0,
+                    maxBSFail: 0,
+                    currBSFail: 0
+                };
+            }
+
+            const simHistory = [];
+
+            for (let idx = 0; idx < numbers.length; idx++) {
+                const currentNum = numbers[idx];
+
+                if (simHistory.length >= 1) {
+                    for (let botId = 1; botId <= 9; botId++) {
+                        const diag = backtestStats[botId];
+                        const pred = calculateBotPrediction(botId, simHistory);
+                        const actualBS = currentNum >= 5 ? 'Big' : 'Small';
+
+                        diag.total++;
+
+                        if (pred.predBS === actualBS) {
+                            diag.winsBS++;
+                            diag.currBSFail = 0;
+                        } else {
+                            diag.currBSFail++;
+                            if (diag.currBSFail > 15) diag.currBSFail = 15;
+                            if (diag.currBSFail > diag.maxBSFail) diag.maxBSFail = diag.currBSFail;
+                        }
+                    }
+                }
+                simHistory.push(currentNum);
+            }
+
+            const grid = document.getElementById('backtestGrid');
+            grid.innerHTML = '';
+
+            for (let i = 1; i <= 9; i++) {
+                const diag = backtestStats[i];
+                const winRate = ((diag.winsBS / diag.total) * 100).toFixed(1);
+                const isHighFail = diag.maxBSFail >= 12;
+                
+                const card = document.createElement('div');
+                card.className = `p-2 rounded-xl border ${isHighFail ? 'bg-rose-950/60 border-rose-700 text-rose-200' : 'bg-slate-800/80 border-slate-700 text-slate-200'} flex flex-col justify-between`;
+                
+                card.innerHTML = `
+                    <div>
+                        <p class="font-bold text-[10px] text-yellow-300 truncate">${diag.botName}</p>
+                        <p class="text-[9px] text-gray-400">Win Rate: <span class="text-emerald-400 font-bold">${winRate}%</span></p>
+                    </div>
+                    <div class="mt-1 pt-1 border-t border-slate-700/50 flex justify-between items-center text-[9px]">
+                        <span>Max BS Lvl:</span>
+                        <span class="font-extrabold px-1.5 py-0.5 rounded ${isHighFail ? 'bg-rose-600 text-white animate-pulse' : (diag.maxBSFail >= 4 ? 'bg-amber-600 text-white' : 'bg-emerald-600 text-white')}">
+                            Lvl ${diag.maxBSFail}
+                        </span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            }
+
+            document.getElementById('backtestSummaryText').innerText = `Tested ${numbers.length} historical draws across 9 Bots`;
+            document.getElementById('backtestResultsArea').classList.remove('hidden');
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('historyContainer');
+            if (results.length === 0) { 
+                container.innerHTML = '<p class="text-[10px] text-gray-400 italic">No results...</p>';
+                document.getElementById('historyCount').innerText = `📊 Recorded History (0)`;
+                return; 
+            }
+            document.getElementById('historyCount').innerText = `📊 Recorded History (${results.length})`;
+            container.innerHTML = '';
+            results.forEach((num, index) => {
+                const node = document.createElement('div');
+                let bgClass = "bg-red-500";
+                if (num === 0) bgClass = "bg-half-0";
+                else if (num === 5) bgClass = "bg-half-5";
+                else if (getNumberColor(num) === 'Green') bgClass = "bg-green-500";
+                const isLatest = index === results.length - 1;
+                node.className = `w-6 h-6 rounded-md ${bgClass} text-white font-bold flex items-center justify-center text-[10px] shadow-xs shrink-0 border ${isLatest ? 'border-yellow-400 ring-1 ring-yellow-400 scale-105' : 'border-white/25'}`;
+                node.innerText = num;
+                container.appendChild(node);
+            });
+            setTimeout(() => { container.scrollLeft = container.scrollWidth; }, 20);
+        }
+
+        function addSingleResult(num, skipCheck = false) {
+            if (!skipCheck) processNewNumberForAllBots(num);
+            results.push(num);
+            document.getElementById('botsDashboard').classList.remove('hidden');
+            document.getElementById('emptyState').classList.add('hidden');
+            generatePredictionsForNext();
+            renderHistory();
+        }
+
+        async function fetchLatestResults(manual = false) {
+            if (isFetching) return;
+            isFetching = true;
+            try {
+                document.getElementById('syncStatus').innerHTML = `⏳ Syncing...`;
+                const response = await fetch(API_URL, { cache: 'no-store' });
+                if (!response.ok) throw new Error('Network error');
+                const data = await response.json();
+                if (!data || !data.data || !Array.isArray(data.data.list)) throw new Error('Invalid API');
+
+                const list = data.data.list;
+                if (list.length > 0 && list[0].issueNumber) {
+                    let latestIssue = BigInt(list[0].issueNumber);
+                    latestActivePeriod = (latestIssue + 1n).toString();
+                    document.getElementById('currentPeriodDisplay').innerText = latestActivePeriod;
+                }
+
+                const chronological = list.slice().reverse();
+                const numbers = chronological.map(item => parseInt(item.number, 10)).filter(n => !isNaN(n) && n >= 0 && n <= 9);
+
+                if (isFirstFetch) {
+                    results = [];
+                    for(let id = 1; id <= 9; id++) {
+                        botsData[id].bsStreak = [0, 0];
+                        botsData[id].colorStreak = [0, 0];
+                        botsData[id].levelStats = {
+                            bs:    { fail: new Array(16).fill(0), win: new Array(16).fill(0) },
+                            color: { fail: new Array(16).fill(0), win: new Array(16).fill(0) }
+                        };
+                        botsData[id].lastPredBS = null;
+                        botsData[id].lastPredColor = null;
+                        botsData[id].liveWins = 0;
+                        botsData[id].liveTotal = 0;
+                    }
+                    numbers.forEach(num => results.push(num));
+                    isFirstFetch = false;
+                    if (list.length > 0) lastProcessedIssue = list[0].issueNumber;
+                } else {
+                    const newItems = [];
+                    for (let item of list) {
+                        if (item.issueNumber === lastProcessedIssue) break;
+                        newItems.push(item);
+                    }
+                    newItems.reverse();
+                    if (newItems.length > 0) {
+                        for (let item of newItems) {
+                            const num = parseInt(item.number, 10);
+                            if (!isNaN(num) && num >= 0 && num <= 9) addSingleResult(num, false);
+                        }
+                        lastProcessedIssue = list[0].issueNumber;
+                    } else if (manual) {
+                        generatePredictionsForNext();
+                    }
+                }
+                document.getElementById('syncStatus').innerHTML = `✅ Synced`;
+                if (results.length >= 1) {
+                    document.getElementById('botsDashboard').classList.remove('hidden');
+                    document.getElementById('emptyState').classList.add('hidden');
+                    generatePredictionsForNext();
+                }
+                renderHistory();
+            } catch (err) {
+                document.getElementById('syncStatus').innerHTML = `⚠️ Retrying...`;
+            } finally {
+                isFetching = false;
+            }
+        }
+
+        function tickClock() {
+            const now = new Date();
+            const sec = now.getSeconds();
+            document.getElementById('currentClock').textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+            let secondsToNext = sec < 30 ? 30 - sec : 60 - sec;
+            document.getElementById('roundTimerDisplay').textContent = secondsToNext;
+            document.getElementById('periodCountdown').textContent = secondsToNext + 's';
+
+            if (autoSyncEnabled && !isFetching && (sec === 1 || sec === 31) && lastSyncSecond !== sec) {
+                lastSyncSecond = sec;
+                fetchLatestResults(false);
+            }
+        }
+
+        function startClock() {
+            if (clockInterval) clearInterval(clockInterval);
+            clockInterval = setInterval(tickClock, 1000);
+            tickClock();
+        }
+
+        function toggleAutoSync() {
+            autoSyncEnabled = !autoSyncEnabled;
+            const btn = document.getElementById('autoSyncBtn');
+            btn.innerHTML = autoSyncEnabled ? '⏸️ Pause' : '▶ Resume';
+            btn.className = autoSyncEnabled ? 'bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-medium' : 'bg-gray-600 hover:bg-gray-700 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-medium';
+        }
+
+        function addBulkResults() {
+            const input = document.getElementById('bulkInput').value.trim();
+            if (!input) return;
+            for (let char of input.replace(/\s+/g, '')) {
+                const n = parseInt(char);
+                if (!isNaN(n) && n >= 0 && n <= 9) addSingleResult(n, false);
+            }
+            document.getElementById('bulkInput').value = '';
+        }
+
+        function undoLastResult() {
+            if (results.length > 0) {
+                results.pop();
+                for(let id = 1; id <= 9; id++) {
+                    botsData[id].bsStreak[0] = Math.max(0, botsData[id].bsStreak[0]-1);
+                    botsData[id].colorStreak[0] = Math.max(0, botsData[id].colorStreak[0]-1);
+                }
+                if (results.length < 1) {
+                    document.getElementById('botsDashboard').classList.add('hidden');
+                    document.getElementById('emptyState').classList.remove('hidden');
+                } else {
+                    generatePredictionsForNext();
+                }
+                renderHistory();
+            }
+        }
+
+        function clearResults() {
+            results = [];
+            isFirstFetch = true;
+            lastProcessedIssue = null;
+            for(let id = 1; id <= 9; id++) {
+                botsData[id].bsStreak = [0, 0];
+                botsData[id].colorStreak = [0, 0];
+                botsData[id].levelStats = {
+                    bs:    { fail: new Array(16).fill(0), win: new Array(16).fill(0) },
+                    color: { fail: new Array(16).fill(0), win: new Array(16).fill(0) }
+                };
+                botsData[id].lastPredBS = null;
+                botsData[id].lastPredColor = null;
+                botsData[id].liveWins = 0;
+                botsData[id].liveTotal = 0;
+            }
+            document.getElementById('botsDashboard').classList.add('hidden');
+            document.getElementById('emptyState').classList.remove('hidden');
+            renderHistory();
+            updateConsensusPanel();
+        }
+
+        function copyResults() {
+            if (results.length === 0) return;
+            navigator.clipboard.writeText(results.join(', ')).then(() => alert('Copied!'));
+        }
+
+        function generateDeepAnalysisReport() {
+            let report = `🌍 CUSTOM 9-BOT REPORT\n=====================================================\n`;
+            for(let id = 1; id <= 9; id++) {
+                let b = botsData[id];
+                const wr = b.liveTotal > 0 ? ((b.liveWins / b.liveTotal) * 100).toFixed(1) : "N/A";
+                report += `${b.name} | Pred: ${b.lastPredBS}/${b.lastPredColor} | BS Lvl: ${b.bsStreak[0]} (Max ${b.bsStreak[1]}) | Color Lvl: ${b.colorStreak[0]} | WR: ${wr}%\n`;
+            }
+            navigator.clipboard.writeText(report).then(() => alert('Report copied!'));
+        }
+
+        window.onload = function() {
+            renderHistory();
+            startClock();
+            calculateRisk();
+            fetchLatestResults(true);
+        };
+    </script>
+</body>
+</html>
